@@ -210,7 +210,7 @@ i32 inum = bfsFdToInum(fd);
   if (lastBlock_FBN * BYTESPERBLOCK  < bfsGetSize(inum))
   bfsRead(inum, lastBlock_FBN, lastBlock);
 
-  // if the written data is only taking a fraction of a block
+  // if the written data is only taking a fraction of a block 
   i32 s_dataBefore = cursor % BYTESPERBLOCK;
   i32 s_totalSize = (lastBlock_FBN - firstBlock_FBN + 1) * BYTESPERBLOCK;
   i8 finalBuf[s_totalSize];
