@@ -98,43 +98,42 @@ i32 fsOpen(str fname) {
 i32 fsRead(i32 fd, i32 numb, void *buf) {
 
   // Find the inum
-  i32 inum = bfsFdToInum(fd);
-  i32 count = 0; // count total size;
+  i32 inode = bfsFdToInum(fd);
+  i32 size = 0; // count total size;
 
   // Find the current cursor
-  i32 cursor = bfsTell(fd);
-  i32 totalSize = numb;
+  i32 ptr = bfsTell(fd);
+  i32 length = numb;
+
+  // Used to temporary store buffer and put it back in later
+  i8 buffer[BUFSIZ];
 
   // If the size that's being read is larger than the iNode size, read only Inode remaining
-  if (cursor + numb > bfsGetSize(inum))
-    totalSize = bfsGetSize(inum) - cursor;
-  i32 currFbn = cursor / BYTESPERBLOCK; // Get fileblock number, floored
+  if (ptr + numb > bfsGetSize(inode))
+    length = bfsGetSize(inode) - ptr;
+  i32 currBlk = ptr / BYTESPERBLOCK; // Get fileblock number, floored
   do {
 
     // 1 block = max of 512 bytes, get a max of 512 or the remainder of total bytes
     // Read max 512 bytes pertime
-    if (totalSize > BYTESPERBLOCK) {
+    if (length > BYTESPERBLOCK) {
       numb = BYTESPERBLOCK;
-      totalSize -= BYTESPERBLOCK;
+      length -= BYTESPERBLOCK;
     } else {
-      numb = totalSize;
-      totalSize = 0;
+      numb = length;
+      length = 0;
     }
-
-    // Used to temporary store buffer and put it back in later
-    i8 tempBuf[BUFSIZ];
-
     // Read
-    bfsRead(inum, currFbn, tempBuf);     // Read
-    memmove(buf + count, tempBuf, numb); // Move teporary buff into buffer
-    memset(tempBuf, 0, BYTESPERBLOCK);   // Set temporary buff = 0
+    bfsRead(inode, currBlk, buffer);    // Read
+    memmove(buf + size, buffer, numb);  // Move teporary buff into buffer
+    memset(buffer, 0, BYTESPERBLOCK);   // Set temporary buff = 0
 
     // Set new cursor
-    bfsSetCursor(inum, cursor += numb); // Move cursor up
-    count += numb;                      // Increment total size read
-    currFbn++;                          // Increment File Block number
-  } while (totalSize > 0);
-  return count;
+    bfsSetCursor(inode, ptr += numb);    // Move cursor up
+    size += numb;                        // Increment total size read
+    currBlk++;                           // Increment File Block number
+  } while (length > 0);
+  return size;
 }
 
 // ============================================================================
