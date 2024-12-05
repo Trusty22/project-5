@@ -112,7 +112,6 @@ i32 fsRead(i32 fd, i32 numb, void *buf) {
   }
 
   do {
-
     if (length < BYTESPERBLOCK) {
       numb = length;
       length = 0;
@@ -210,7 +209,7 @@ i32 fsWrite(i32 fd, i32 numb, void *buf) {
   i8 buffer[size];
 
   bfsRead(inum, ptr / BYTESPERBLOCK, startB);
-  
+
   if (bfsGetSize(inum) > (endFbn * BYTESPERBLOCK)) {
     bfsRead(inum, endFbn, endB);
   }
@@ -223,17 +222,17 @@ i32 fsWrite(i32 fd, i32 numb, void *buf) {
 
   while (size > 0) {
 
-    if (ptrF * BYTESPERBLOCK > bfsGetSize(inum) - 1) {
+    if (ptrF * BYTESPERBLOCK > (bfsGetSize(inum) - 1)) {
       bfsExtend(inum, ptrF);
     }
-    bioWrite(bfsFbnToDbn(inum, ptrF), buffer + shift);
+    bioWrite(bfsFbnToDbn(inum, ptrF), (buffer + shift));
 
     size -= BYTESPERBLOCK;
     shift += BYTESPERBLOCK;
     ptrF++;
   }
 
-  bfsSetCursor(inum, numb + ptr);
+  bfsSetCursor(inum, (numb + ptr));
 
   if (bfsGetSize(inum) < (numb + ptr)) {
     bfsSetSize(inum, (numb + ptr));
