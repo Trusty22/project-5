@@ -196,36 +196,36 @@ i32 fsSize(i32 fd) {
 // ============================================================================
 i32 fsWrite(i32 fd, i32 numb, void *buf) {
   i32 inum = bfsFdToInum(fd);
-  i32 cursor = bfsTell(fd);
+  i32 ptr = bfsTell(fd);
 
   // Read the first block value
-  i8 firstBlock[BYTESPERBLOCK];
-  i8 lastBlock[BYTESPERBLOCK];
+  i8 startB[BYTESPERBLOCK];
+  i8 endB[BYTESPERBLOCK];
   // Build the buffer that will be written using bioWrite
 
   // FDN
-  i32 firstBlock_FBN = cursor / BYTESPERBLOCK;
-  i32 lastBlock_FBN = (cursor + numb) / BYTESPERBLOCK;
-  i32 curr_FBN = cursor / BYTESPERBLOCK;
+  i32 firstBlock_FBN = ptr / BYTESPERBLOCK;
+  i32 lastBlock_FBN = (ptr + numb) / BYTESPERBLOCK;
+  i32 curr_FBN = ptr / BYTESPERBLOCK;
 
   // Read
-  bfsRead(inum, cursor / BYTESPERBLOCK, firstBlock);
-  if (lastBlock_FBN * BYTESPERBLOCK < bfsGetSize(inum))
-    bfsRead(inum, lastBlock_FBN, lastBlock);
-
+  bfsRead(inum, ptr / BYTESPERBLOCK, startB);
+  if (lastBlock_FBN * BYTESPERBLOCK < bfsGetSize(inum)) {
+    bfsRead(inum, lastBlock_FBN, endB);
+  }
   // if the written data is only taking a fraction of a block
-  i32 s_dataBefore = cursor % BYTESPERBLOCK;
+  i32 s_dataBefore = ptr % BYTESPERBLOCK;
   i32 s_totalSize = (lastBlock_FBN - firstBlock_FBN + 1) * BYTESPERBLOCK;
   i8 finalBuf[s_totalSize];
   i32 index = 0;
   // Used to add to size
 
   // Move the original data from 1st block, because write might not cover all of 1st block
-  memmove(finalBuf, firstBlock, s_dataBefore);
+  memmove(finalBuf, startB, s_dataBefore);
 
   // Move the original data from last block to lastBLock_FBN * 512
   if (lastBlock_FBN * BYTESPERBLOCK < bfsGetSize(inum))
-    memmove(finalBuf + (lastBlock_FBN - firstBlock_FBN) * BYTESPERBLOCK, lastBlock, BYTESPERBLOCK);
+    memmove(finalBuf + (lastBlock_FBN - firstBlock_FBN) * BYTESPERBLOCK, endB, BYTESPERBLOCK);
 
   // Move data to be written
   memmove(finalBuf + s_dataBefore, buf, numb);
@@ -245,10 +245,10 @@ i32 fsWrite(i32 fd, i32 numb, void *buf) {
     curr_FBN++;
     index += BYTESPERBLOCK;
   }
-  bfsSetCursor(inum, cursor + numb);
+  bfsSetCursor(inum, ptr + numb);
   // only if the final cursor has been changed
-  if (cursor + numb > bfsGetSize(inum)) {
-    bfsSetSize(inum, cursor + numb);
+  if (ptr + numb > bfsGetSize(inum)) {
+    bfsSetSize(inum, ptr + numb);
   }
   return 0;
 }
