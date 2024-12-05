@@ -198,57 +198,46 @@ i32 fsWrite(i32 fd, i32 numb, void *buf) {
   i32 inum = bfsFdToInum(fd);
   i32 ptr = bfsTell(fd);
 
-  // Read the first block value
+  i32 ptrF = ptr / BYTESPERBLOCK; // ptr fbn || curr fbn
+  i32 startFbn = ptr / BYTESPERBLOCK;
+  i32 endFbn = (numb + ptr) / BYTESPERBLOCK;
+  i32 size = (endFbn - startFbn + 1) * BYTESPERBLOCK;
+  i32 offset = ptr % BYTESPERBLOCK;
+  i32 shift = 0;
+
   i8 startB[BYTESPERBLOCK];
   i8 endB[BYTESPERBLOCK];
-  // Build the buffer that will be written using bioWrite
+  i8 buffer[size];
 
-  // FDN
-  i32 firstBlock_FBN = ptr / BYTESPERBLOCK;
-  i32 lastBlock_FBN = (ptr + numb) / BYTESPERBLOCK;
-  i32 curr_FBN = ptr / BYTESPERBLOCK;
-
-  // Read
   bfsRead(inum, ptr / BYTESPERBLOCK, startB);
-  if (lastBlock_FBN * BYTESPERBLOCK < bfsGetSize(inum)) {
-    bfsRead(inum, lastBlock_FBN, endB);
+  
+  if (bfsGetSize(inum) > (endFbn * BYTESPERBLOCK)) {
+    bfsRead(inum, endFbn, endB);
   }
-  // if the written data is only taking a fraction of a block
-  i32 s_dataBefore = ptr % BYTESPERBLOCK;
-  i32 s_totalSize = (lastBlock_FBN - firstBlock_FBN + 1) * BYTESPERBLOCK;
-  i8 finalBuf[s_totalSize];
-  i32 index = 0;
-  // Used to add to size
+  memmove(buffer, startB, offset);
 
-  // Move the original data from 1st block, because write might not cover all of 1st block
-  memmove(finalBuf, startB, s_dataBefore);
+  if (bfsGetSize(inum) > (endFbn * BYTESPERBLOCK)) {
+    memmove(buffer + (endFbn - startFbn) * BYTESPERBLOCK, endB, BYTESPERBLOCK);
+  }
+  memmove(buffer + offset, buf, numb);
 
-  // Move the original data from last block to lastBLock_FBN * 512
-  if (lastBlock_FBN * BYTESPERBLOCK < bfsGetSize(inum))
-    memmove(finalBuf + (lastBlock_FBN - firstBlock_FBN) * BYTESPERBLOCK, endB, BYTESPERBLOCK);
+  while (size > 0) {
 
-  // Move data to be written
-  memmove(finalBuf + s_dataBefore, buf, numb);
-  // Move data to be written
-  while (s_totalSize > 0) {
-    // Check if extension is needed (offset by 1 because size is not 0 based)
-    if (curr_FBN * BYTESPERBLOCK > bfsGetSize(inum) - 1) {
-      bfsExtend(inum, curr_FBN);
+    if (ptrF * BYTESPERBLOCK > bfsGetSize(inum) - 1) {
+      bfsExtend(inum, ptrF);
     }
-    // convert FBN to DBN
-    i32 curr_DBN = bfsFbnToDbn(inum, curr_FBN);
-    // Write to DBN
-    bioWrite(curr_DBN, finalBuf + index);
+    bioWrite(bfsFbnToDbn(inum, ptrF), buffer + shift);
 
-    // decrement total size
-    s_totalSize -= BYTESPERBLOCK;
-    curr_FBN++;
-    index += BYTESPERBLOCK;
+    size -= BYTESPERBLOCK;
+    shift += BYTESPERBLOCK;
+    ptrF++;
   }
-  bfsSetCursor(inum, ptr + numb);
-  // only if the final cursor has been changed
-  if (ptr + numb > bfsGetSize(inum)) {
-    bfsSetSize(inum, ptr + numb);
+
+  bfsSetCursor(inum, numb + ptr);
+
+  if (bfsGetSize(inum) < (numb + ptr)) {
+    bfsSetSize(inum, (numb + ptr));
   }
+
   return 0;
 }
