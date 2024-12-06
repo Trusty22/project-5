@@ -195,45 +195,53 @@ i32 fsSize(i32 fd) {
 // ============================================================================
 i32 fsWrite(i32 fd, i32 numb, void *buf) {
   i32 inum = bfsFdToInum(fd);
-  i32 ptr = bfsTell(fd);
+  i32 ptr = bfsTell(fd); // Gets the current pointer for our curser
 
-  i32 ptrF = ptr / BYTESPERBLOCK; // ptr fbn || curr fbn
+  i32 ptrF = ptr / BYTESPERBLOCK; // Position of the pointer of the fbn
   i32 startFbn = ptr / BYTESPERBLOCK;
   i32 endFbn = (numb + ptr) / BYTESPERBLOCK;
-  i32 size = (endFbn - startFbn + 1) * BYTESPERBLOCK;
-  i32 offset = ptr % BYTESPERBLOCK;
-  i32 shift = 0;
+  i32 size = (endFbn - startFbn + 1) * BYTESPERBLOCK; // Total size of the buffer
+  i32 offset = ptr % BYTESPERBLOCK;                   // Get the offset
+  i32 shift = 0;                                      // Buffer shift value
 
+  // Buffers for the start and end blocks. as well as the combined data.
   i8 startB[BYTESPERBLOCK];
   i8 endB[BYTESPERBLOCK];
   i8 buffer[size];
 
+  // Read start block of the file into the start buffer.
   bfsRead(inum, ptr / BYTESPERBLOCK, startB);
 
+  // If the file is > last block, read the last block.
   if (bfsGetSize(inum) > (endFbn * BYTESPERBLOCK)) {
     bfsRead(inum, endFbn, endB);
   }
-  memmove(buffer, startB, offset);
+  memmove(buffer, startB, offset); // Copy from the start buffer into the main buffer .
 
+  // Copy from end buffer into the main buffer if buffer is to big.
   if (bfsGetSize(inum) > (endFbn * BYTESPERBLOCK)) {
     memmove(buffer + (endFbn - startFbn) * BYTESPERBLOCK, endB, BYTESPERBLOCK);
   }
-  memmove(buffer + offset, buf, numb);
+  memmove(buffer + offset, buf, numb); // Move numb from buf to the buffer + offset
 
+  // If the block doesnt exist, extend file, this is done for the whole file.
   while (size > 0) {
 
-    if (ptrF * BYTESPERBLOCK > (bfsGetSize(inum) - 1)) {
+    if ((bfsGetSize(inum) - 1) < (ptrF * BYTESPERBLOCK)) {
       bfsExtend(inum, ptrF);
     }
     bioWrite(bfsFbnToDbn(inum, ptrF), (buffer + shift));
 
+    // adjusting size, buffer shift, and block ptr.
     size -= BYTESPERBLOCK;
     shift += BYTESPERBLOCK;
     ptrF++;
   }
 
+  // New Cursor position is set after new offset is calculated.
   bfsSetCursor(inum, (numb + ptr));
 
+  // Incase file size is still to big make it the same as the last file.
   if (bfsGetSize(inum) < (numb + ptr)) {
     bfsSetSize(inum, (numb + ptr));
   }
