@@ -96,41 +96,41 @@ i32 fsOpen(str fname) {
 // read (may be less than 'numb' if we hit EOF).  On failure, abort
 // ============================================================================
 i32 fsRead(i32 fd, i32 numb, void *buf) {
-
   i32 inum = bfsFdToInum(fd);
-  i32 ptr = bfsTell(fd);
-  i32 currBlk = ptr / BYTESPERBLOCK;
+  i32 ptr = bfsTell(fd);             // Gets the current pointer for our curser.
+  i32 currBlk = ptr / BYTESPERBLOCK; // Gets current block number.
 
-  i32 length = numb;
-  i32 size = 0;
-  i32 tmptr;
+  i32 length = numb; // Bytes to read
+  i32 size = 0;      // Bytes already read
+  i32 tmptr;         // Gets the temperary current pointer for our curser.
 
-  i8 buffer[BUFSIZ];
+  i8 buffer[BUFSIZ]; // Holds data read from disk.
 
+  // If read is > than the file , adjust length up to EOF.
   if (bfsGetSize(inum) < ptr + numb) {
     length = bfsGetSize(inum) - ptr;
   }
 
-  do {
-    if (length < BYTESPERBLOCK) {
-      numb = length;
+  do {                            // Loop reads all until all bytes are read or EOF.
+    if (length < BYTESPERBLOCK) { // If length read is < than a block, adjust the read size.
+      numb = length;              // Else read full block and shrink the bytes length.
       length = 0;
     } else {
       numb = BYTESPERBLOCK;
       length -= BYTESPERBLOCK;
     }
 
-    bfsRead(inum, currBlk, buffer);
-    memmove(buf + size, buffer, numb);
-    memset(buffer, 0, BYTESPERBLOCK);
+    bfsRead(inum, currBlk, buffer);    // Read current block from file, put in  buffer.
+    memmove(buf + size, buffer, numb); // Copy the numb data from buffer to buf.
+    memset(buffer, 0, BYTESPERBLOCK);  // Clear buffer for next loop.
 
-    tmptr = ptr += numb;
+    tmptr = ptr += numb; // Update pointer and curser
     bfsSetCursor(inum, tmptr);
 
-    size = size + numb;
-    currBlk++;
+    size = size + numb; // Incraese size of the data so far.
+    currBlk++;          // And go to Next block
 
-  } while (length > 0);
+  } while (length > 0); // Until there are bytes still left.
 
   return size;
 }
